@@ -6,10 +6,48 @@ $cwebpPath = Read-Host "🔍 Entrez le chemin complet de cwebp.exe (ex: C:\Users
 # Demande à l'utilisateur le niveau de compression souhaité
 $quality = Read-Host "🔢 Entrez le niveau de qualité de compression (0 = très compressé, 100 = qualité maximale). Recommandé : 75"
 
+# Fonction pour télécharger cwebp si besoin
+function DownloadCWEBP {
+    $downloadUrl = "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.4.0-windows-x64.zip"
+    $savePath = "$env:TEMP\libwebp.zip"
+
+    Write-Host "👁  Téléchargement de cwebp..."
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $savePath
+
+    Expand-Archive -Path $savePath -DestinationPath "$env:TEMP\libwebp" -Force
+
+    $newCwebpPath = Get-ChildItem "$env:TEMP\libwebp\libwebp-1.4.0-windows-x64\bin\" -Recurse -Filter cwebp.exe | Select-Object -First 1
+    if ($newCwebpPath) {
+        Write-Host "🛠️ cwebp.exe trouvé et prêt : $newCwebpPath` "
+        return $newCwebpPath.FullName
+    } else {
+        Write-Host "⚠️ Erreur : Impossible de trouver cwebp.exe après le téléchargement."
+        exit
+    }
+}
+
+# Vérification que les chemins existent
+if (-Not (Test-Path $inputRoot)) {
+    Write-Host "❌ Le dossier source '$inputRoot' n'existe pas."
+    exit
+}
+
 # Assure que le dossier de sortie existe
 if (-Not (Test-Path $outputRoot)) {
     New-Item -ItemType Directory -Path $outputRoot
     Write-Host "`n🔳 Dossier de sortie créé : $outputRoot`n"
+}
+
+# Vérification que cwebp.exe existe
+if (-Not (Test-Path $cwebpPath)) {
+    Write-Host "⚠️ Le fichier cwebp.exe n'a pas été trouvé."
+    $choice = Read-Host "🚀 Voulez-vous télécharger cwebp automatiquement ? (O/N)"
+    if ($choice -eq "o") {
+        $cwebpPath = DownloadCWEBP
+    } else {
+        Write-Host "❌ Arrêt du script."
+        exit
+    }
 }
 
 # Fonction pour convertir une image en WebP avec cwebp
